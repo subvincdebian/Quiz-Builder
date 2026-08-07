@@ -34,4 +34,7 @@ async function bootstrap() {
   await app.listen(port);
   logger.log(`Server running on port ${port}`);
 }
-bootstrap();
+bootstrap().catch((err) => {
+  logger.error(err);
+  process.exit(1);
+});

@@ -19,39 +19,39 @@ export class CreateOptionDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  text: string;
+  text!: string;
 
   @ApiProperty()
   @IsBoolean()
-  isCorrect: boolean;
+  isCorrect!: boolean;
 }
 
 export class CreateQuestionDto {
   @ApiProperty({ enum: QuestionType })
   @IsEnum(QuestionType)
-  type: QuestionType;
+  type!: QuestionType;
 
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  text: string;
+  text!: string;
 
   @ApiProperty({ type: [CreateOptionDto] })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateOptionDto)
-  options: CreateOptionDto[];
+  options!: CreateOptionDto[];
 }
 
 export class CreateQuizDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  title: string;
+  title!: string;
 
   @ApiProperty({ type: [CreateQuestionDto] })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateQuestionDto)
-  questions: CreateQuestionDto[];
+  questions!: CreateQuestionDto[];
 }

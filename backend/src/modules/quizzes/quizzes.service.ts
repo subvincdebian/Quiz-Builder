@@ -3,14 +3,18 @@ import {
   InternalServerErrorException,
   NotFoundException,
   Inject,
+  Logger,
 } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateQuizDto } from './dto/create-quiz.dto';
+import { Quiz } from '@prisma/client';
 
 @Injectable()
 export class QuizzesService {
+  private readonly logger = new Logger(QuizzesService.name);
+
   constructor(
     private prisma: PrismaService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
@@ -34,7 +38,7 @@ export class QuizzesService {
         },
       });
     } catch (error) {
-      console.error('Backend error (create):', error);
+      this.logger.error('Failed to create quiz', error);
       throw new InternalServerErrorException('Failed to create quiz');
     }
   }
@@ -50,7 +54,7 @@ export class QuizzesService {
       await this.cacheManager.set('/quizzes', quizzes);
       return quizzes;
     } catch (error) {
-      console.error('Backend error (findAll):', error);
+      this.logger.error('Failed to fetch quizzes', error);
       throw new InternalServerErrorException('Failed to fetch quizzes');
     }
   }
@@ -69,7 +73,7 @@ export class QuizzesService {
       return quiz;
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
-      console.error('Backend error (findOne):', error);
+      this.logger.error(`Failed to fetch quiz ${id}`, error);
       throw new InternalServerErrorException('Failed to fetch quiz');
     }
   }
@@ -80,7 +84,7 @@ export class QuizzesService {
       await this.cacheManager.del('/quizzes');
       await this.cacheManager.del(`/quizzes/${id}`);
     } catch (error) {
-      console.error('Backend error (remove):', error);
+      this.logger.error(`Failed to delete quiz ${id}`, error);
       throw new InternalServerErrorException('Failed to delete quiz');
     }
   }

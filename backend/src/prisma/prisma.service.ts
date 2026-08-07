@@ -9,13 +9,8 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   constructor() {
-    // Explicitly using the known credentials to bypass potential env var issues
     const pool = new Pool({
-      user: 'postgres',
-      password: 'password',
-      host: 'localhost',
-      port: 5432,
-      database: 'quizdb',
+      connectionString: process.env.DATABASE_URL,
       max: 10,
     });
     const adapter = new PrismaPg(pool);
