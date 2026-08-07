@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import {
+  useForm,
+  useFieldArray,
+  useWatch,
+  type SubmitHandler,
+} from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { quizSchema, type QuizFormData } from './schema';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
+import { RadioGroup } from '@/shared/ui/RadioGroup';
 import { quizApi } from '@/entities/quiz/api';
-import { Plus, Trash2, Copy } from 'lucide-react';
+import { Plus, Trash2, Copy, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -20,6 +26,7 @@ export const QuizForm: React.FC = () => {
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<QuizFormData>({
     resolver: zodResolver(quizSchema),
@@ -61,15 +68,17 @@ export const QuizForm: React.FC = () => {
     name: 'questions',
   });
 
-  const onSubmit = async (data: QuizFormData) => {
+  const onSubmit: SubmitHandler<QuizFormData> = async (data) => {
     try {
       const payload = {
         ...data,
         questions: data.questions.map((q) => ({
           ...q,
-          correctAnswers: q.options
-            .filter((o) => o.isCorrect)
-            .map((o) => o.text),
+          options: q.options || [],
+          correctAnswers:
+            q.type === 'INPUT'
+              ? [q.options[0]?.text || '']
+              : q.options.filter((o) => o.isCorrect).map((o) => o.text),
         })),
       };
 
@@ -87,7 +96,9 @@ export const QuizForm: React.FC = () => {
   };
 
   if (loading)
-    return <div className="p-8 text-center">Loading quiz data...</div>;
+    return (
+      <div className="p-8 text-center text-zinc-400">Loading quiz data...</div>
+    );
 
   return (
     <form
@@ -98,11 +109,6 @@ export const QuizForm: React.FC = () => {
         <h2 className="text-2xl font-bold tracking-tight text-zinc-100">
           {isEditMode ? 'Edit Quiz' : 'Create New Quiz'}
         </h2>
-        <p className="text-zinc-400">
-          {isEditMode
-            ? 'Modify your quiz'
-            : 'Define your quiz title and questions below.'}
-        </p>
       </div>
 
       <Input
@@ -123,18 +129,14 @@ export const QuizForm: React.FC = () => {
             register={register}
             errors={errors}
             insert={insert}
+            setValue={setValue}
           />
         ))}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-zinc-800">
-        <Button
-          type="button"
-          variant="ghost"
-          className="w-full sm:w-auto"
-          onClick={() => navigate(-1)}
-        >
-          Back
+        <Button type="button" variant="ghost" onClick={() => navigate(-1)}>
+          <ArrowLeft className="w-4 h-4" /> Back
         </Button>
         <Button
           type="button"
@@ -173,7 +175,9 @@ const QuestionFields: React.FC<any> = ({
   register,
   errors,
   insert,
+  setValue,
 }) => {
+  const type = useWatch({ control, name: `questions.${qIndex}.type` });
   const {
     fields: optFields,
     append: appendOption,
@@ -185,17 +189,71 @@ const QuestionFields: React.FC<any> = ({
     insert(qIndex + 1, values);
   };
 
+  // Helper to handle type changes
+  useEffect(() => {
+    if (type === 'INPUT') {
+      if (optFields.length !== 1) {
+        setValue(`questions.${qIndex}.options`, [
+          { text: '', isCorrect: true },
+        ]);
+      }
+    } else if (type === 'BOOLEAN') {
+      // Enforce exactly 2 options for Boolean
+      if (optFields.length !== 2) {
+        setValue(`questions.${qIndex}.options`, [
+          { text: '', isCorrect: true },
+          { text: '', isCorrect: false },
+        ]);
+      }
+    } else if (optFields.length < 2) {
+      // Dynamic options for Checkbox and Multiple Choice
+      if (optFields.length === 0) {
+        appendOption({ text: '', isCorrect: false });
+        appendOption({ text: '', isCorrect: false });
+      } else {
+        appendOption({ text: '', isCorrect: false });
+      }
+    }
+  }, [type, qIndex, setValue, optFields.length, appendOption]);
+
+  const handleCorrectChange = (changedIndex: number, isChecked: boolean) => {
+    if ((type === 'BOOLEAN' || type === 'MULTIPLE_CHOICE') && isChecked) {
+      optFields.forEach((_, index) => {
+        if (index !== changedIndex) {
+          setValue(`questions.${qIndex}.options.${index}.isCorrect`, false);
+        }
+      });
+    }
+  };
+
   return (
     <div className="p-5 sm:p-6 bg-zinc-950 border border-zinc-800 rounded-xl space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-        <div className="flex-1 w-full">
-          <Input
-            {...register(`questions.${qIndex}.text`)}
-            label={`Question ${qIndex + 1} *`}
-            error={errors.questions?.[qIndex]?.text?.message}
-          />
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1">
+            <Input
+              {...register(`questions.${qIndex}.text`)}
+              label={`Question ${qIndex + 1} *`}
+              placeholder="Enter your question here..."
+              error={errors.questions?.[qIndex]?.text?.message}
+            />
+          </div>
+          <div className="md:w-auto">
+            <RadioGroup
+              label="Type"
+              value={type}
+              onChange={(val) => setValue(`questions.${qIndex}.type`, val)}
+              options={[
+                { label: 'Boolean', value: 'BOOLEAN' },
+                { label: 'Input', value: 'INPUT' },
+                { label: 'Checkbox', value: 'CHECKBOX' },
+                { label: 'Multiple Choice', value: 'MULTIPLE_CHOICE' },
+              ]}
+            />
+          </div>
         </div>
-        <div className="flex gap-2 shrink-0 pt-7">
+
+        <div className="flex gap-2 justify-end">
           <Button
             type="button"
             variant="ghost"
@@ -219,47 +277,72 @@ const QuestionFields: React.FC<any> = ({
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium text-zinc-400">Options *</label>
+        <div className="flex justify-between items-center">
+          <label className="text-sm font-medium text-zinc-400">
+            {type === 'INPUT' ? 'Correct Answer *' : 'Options *'}
+          </label>
+          {type !== 'INPUT' && (
+            <span className="text-xs text-zinc-500">
+              {type === 'CHECKBOX' ? 'Select all that apply' : 'Select one'}
+            </span>
+          )}
+        </div>
         {optFields.map((opt, oIndex) => (
           <div key={opt.id} className="flex gap-2 items-center">
             <Input
               {...register(`questions.${qIndex}.options.${oIndex}.text`)}
-              placeholder={`Option ${oIndex + 1}`}
+              placeholder={
+                type === 'INPUT' ? 'Correct answer' : `Option ${oIndex + 1}`
+              }
               error={
                 errors.questions?.[qIndex]?.options?.[oIndex]?.text?.message
               }
             />
-            <label
-              className="flex items-center gap-2 cursor-pointer mt-7"
-              title="Mark as correct"
-            >
-              <input
-                type="checkbox"
-                {...register(`questions.${qIndex}.options.${oIndex}.isCorrect`)}
-                className="accent-indigo-500 w-5 h-5 flex-shrink-0"
-              />
-              <span className="text-xs text-zinc-500">Correct</span>
-            </label>
-            <Button
-              type="button"
-              variant="ghost"
-              className="px-3 mt-7"
-              disabled={optFields.length <= 2}
-              onClick={() => removeOption(oIndex)}
-              title="Remove option"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
+
+            {type !== 'INPUT' && (
+              <label
+                className="flex items-center gap-2 cursor-pointer mt-7"
+                title="Mark as correct"
+              >
+                <input
+                  type="checkbox"
+                  {...register(
+                    `questions.${qIndex}.options.${oIndex}.isCorrect`,
+                    {
+                      onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+                        handleCorrectChange(oIndex, e.target.checked),
+                    }
+                  )}
+                  className="accent-indigo-500 w-5 h-5 flex-shrink-0"
+                />
+                <span className="text-xs text-zinc-500">Correct</span>
+              </label>
+            )}
+
+            {type !== 'INPUT' && type !== 'BOOLEAN' && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="px-3 mt-7"
+                disabled={optFields.length <= 2}
+                onClick={() => removeOption(oIndex)}
+                title="Remove option"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         ))}
-        <Button
-          type="button"
-          variant="ghost"
-          className="text-xs w-full sm:w-auto mt-2"
-          onClick={() => appendOption({ text: '', isCorrect: false })}
-        >
-          <Plus className="w-3 h-3" /> Add Option
-        </Button>
+        {type !== 'INPUT' && type !== 'BOOLEAN' && (
+          <Button
+            type="button"
+            variant="ghost"
+            className="text-xs w-full sm:w-auto mt-2"
+            onClick={() => appendOption({ text: '', isCorrect: false })}
+          >
+            <Plus className="w-3 h-3" /> Add Option
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -5,11 +5,22 @@ export const optionSchema = z.object({
   isCorrect: z.boolean(),
 });
 
-export const questionSchema = z.object({
-  type: z.enum(['BOOLEAN', 'INPUT', 'CHECKBOX']),
-  text: z.string().min(1, 'Question text is required'),
-  options: z.array(optionSchema).min(2, 'At least 2 options are required'),
-});
+export const questionSchema = z
+  .object({
+    type: z.enum(['BOOLEAN', 'INPUT', 'CHECKBOX', 'MULTIPLE_CHOICE']),
+    text: z.string().min(1, 'Question text is required'),
+    options: z.array(optionSchema),
+  })
+  .refine(
+    (data) => {
+      if (data.type !== 'INPUT' && data.options.length < 2) return false;
+      return true;
+    },
+    {
+      message: 'At least 2 options are required for this question type',
+      path: ['options'],
+    }
+  );
 
 export const quizSchema = z.object({
   title: z.string().min(1, 'Title is required'),
