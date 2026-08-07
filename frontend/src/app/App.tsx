@@ -15,6 +15,7 @@ export const App: React.FC = () => {
             <Route path="/" element={<Navigate to="/quizzes" />} />
             <Route path="/quizzes" element={<QuizListPage />} />
             <Route path="/quizzes/:id" element={<QuizDetailPage />} />
+            <Route path="/quizzes/:id/edit" element={<QuizForm />} />
             <Route path="/create" element={<QuizForm />} />
           </Routes>
         </main>

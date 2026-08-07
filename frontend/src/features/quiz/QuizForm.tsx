@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { quizSchema, type QuizFormData } from './schema';
@@ -7,14 +7,19 @@ import { Input } from '@/shared/ui/Input';
 import { quizApi } from '@/entities/quiz/api';
 import { Plus, Trash2, Copy } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 export const QuizForm: React.FC = () => {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const isEditMode = !!id;
+  const [loading, setLoading] = useState(isEditMode);
+
   const {
     register,
     control,
     handleSubmit,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<QuizFormData>({
     resolver: zodResolver(quizSchema),
@@ -32,6 +37,25 @@ export const QuizForm: React.FC = () => {
       ],
     },
   });
+
+  useEffect(() => {
+    if (isEditMode && id) {
+      quizApi.getById(id).then((res) => {
+        const { title, questions } = res.data;
+        const formattedQuestions = questions.map((q) => ({
+          ...q,
+          options: q.options.map((opt) => ({
+            text: opt,
+            isCorrect: q.correctAnswers.includes(opt),
+          })),
+        }));
+
+        reset({ title, questions: formattedQuestions });
+        setLoading(false);
+      });
+    }
+  }, [isEditMode, id, reset]);
+
   const { fields, append, remove, insert } = useFieldArray({
     control,
     name: 'questions',
@@ -39,32 +63,54 @@ export const QuizForm: React.FC = () => {
 
   const onSubmit = async (data: QuizFormData) => {
     try {
-      await quizApi.create(data);
-      toast.success('Quiz created successfully!');
+      const payload = {
+        ...data,
+        questions: data.questions.map((q) => ({
+          ...q,
+          correctAnswers: q.options
+            .filter((o) => o.isCorrect)
+            .map((o) => o.text),
+        })),
+      };
+
+      if (isEditMode && id) {
+        await quizApi.update(id, payload as any);
+        toast.success('Quiz updated successfully!');
+      } else {
+        await quizApi.create(payload as any);
+        toast.success('Quiz created successfully!');
+      }
       navigate('/quizzes');
     } catch {
-      // Error handled by interceptor
+      toast.error(`Failed to ${isEditMode ? 'update' : 'create'} quiz`);
     }
   };
+
+  if (loading)
+    return <div className="p-8 text-center">Loading quiz data...</div>;
 
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="space-y-6 w-full max-w-2xl mx-auto p-4 sm:p-8 bg-zinc-900/50 border border-zinc-800/80 rounded-xl"
+      className="space-y-8 w-full max-w-3xl mx-auto p-6 sm:p-10 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-xl"
     >
-      <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-100">
-        Create New Quiz
-      </h2>
-      <div>
-        <Input
-          {...register('title')}
-          label="Quiz Title *"
-          placeholder="e.g., React Fundamentals"
-        />
-        {errors.title && (
-          <p className="text-xs text-rose-400 mt-1">{errors.title.message}</p>
-        )}
+      <div className="space-y-2">
+        <h2 className="text-2xl font-bold tracking-tight text-zinc-100">
+          {isEditMode ? 'Edit Quiz' : 'Create New Quiz'}
+        </h2>
+        <p className="text-zinc-400">
+          {isEditMode
+            ? 'Modify your quiz'
+            : 'Define your quiz title and questions below.'}
+        </p>
       </div>
+
+      <Input
+        {...register('title')}
+        label="Quiz Title *"
+        placeholder="e.g., React Fundamentals"
+        error={errors.title?.message}
+      />
 
       <div className="space-y-6">
         {fields.map((field, qIndex) => (
@@ -81,7 +127,15 @@ export const QuizForm: React.FC = () => {
         ))}
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-zinc-800">
+      <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-zinc-800">
+        <Button
+          type="button"
+          variant="ghost"
+          className="w-full sm:w-auto"
+          onClick={() => navigate(-1)}
+        >
+          Back
+        </Button>
         <Button
           type="button"
           variant="ghost"
@@ -101,10 +155,10 @@ export const QuizForm: React.FC = () => {
         </Button>
         <Button
           type="submit"
-          className="w-full sm:w-auto"
-          disabled={isSubmitting}
+          className="w-full sm:w-auto ml-auto"
+          isLoading={isSubmitting}
         >
-          {isSubmitting ? 'Saving...' : 'Create Quiz'}
+          {isEditMode ? 'Save Changes' : 'Create Quiz'}
         </Button>
       </div>
     </form>
@@ -132,25 +186,22 @@ const QuestionFields: React.FC<any> = ({
   };
 
   return (
-    <div className="p-4 sm:p-6 bg-zinc-900 border border-zinc-800 rounded-lg space-y-4">
+    <div className="p-5 sm:p-6 bg-zinc-950 border border-zinc-800 rounded-xl space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div className="flex-1 w-full">
           <Input
             {...register(`questions.${qIndex}.text`)}
             label={`Question ${qIndex + 1} *`}
+            error={errors.questions?.[qIndex]?.text?.message}
           />
-          {errors.questions?.[qIndex]?.text && (
-            <p className="text-xs text-rose-400 mt-1">
-              {errors.questions[qIndex].text.message}
-            </p>
-          )}
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 shrink-0 pt-7">
           <Button
             type="button"
             variant="ghost"
-            className="px-2"
+            className="px-3"
             onClick={copyQuestion}
+            title="Duplicate question"
           >
             <Copy className="w-4 h-4" />
           </Button>
@@ -158,8 +209,9 @@ const QuestionFields: React.FC<any> = ({
             type="button"
             variant="danger"
             disabled={fields.length === 1}
-            className="px-2"
+            className="px-3"
             onClick={() => remove(qIndex)}
+            title="Delete question"
           >
             <Trash2 className="w-4 h-4" />
           </Button>
@@ -173,33 +225,37 @@ const QuestionFields: React.FC<any> = ({
             <Input
               {...register(`questions.${qIndex}.options.${oIndex}.text`)}
               placeholder={`Option ${oIndex + 1}`}
+              error={
+                errors.questions?.[qIndex]?.options?.[oIndex]?.text?.message
+              }
             />
-            <input
-              type="checkbox"
-              {...register(`questions.${qIndex}.options.${oIndex}.isCorrect`)}
-              className="accent-indigo-500 w-5 h-5 flex-shrink-0"
+            <label
+              className="flex items-center gap-2 cursor-pointer mt-7"
               title="Mark as correct"
-            />
+            >
+              <input
+                type="checkbox"
+                {...register(`questions.${qIndex}.options.${oIndex}.isCorrect`)}
+                className="accent-indigo-500 w-5 h-5 flex-shrink-0"
+              />
+              <span className="text-xs text-zinc-500">Correct</span>
+            </label>
             <Button
               type="button"
               variant="ghost"
-              className="px-2"
+              className="px-3 mt-7"
               disabled={optFields.length <= 2}
               onClick={() => removeOption(oIndex)}
+              title="Remove option"
             >
               <Trash2 className="w-4 h-4" />
             </Button>
           </div>
         ))}
-        {errors.questions?.[qIndex]?.options && (
-          <p className="text-xs text-rose-400">
-            {errors.questions[qIndex].options.message}
-          </p>
-        )}
         <Button
           type="button"
           variant="ghost"
-          className="text-xs w-full sm:w-auto"
+          className="text-xs w-full sm:w-auto mt-2"
           onClick={() => appendOption({ text: '', isCorrect: false })}
         >
           <Plus className="w-3 h-3" /> Add Option
