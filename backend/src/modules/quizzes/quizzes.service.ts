@@ -9,7 +9,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateQuizDto } from './dto/create-quiz.dto';
-import { Quiz } from '@prisma/client';
+import { Quiz, Question } from '@prisma/client';
 
 @Injectable()
 export class QuizzesService {
@@ -22,7 +22,7 @@ export class QuizzesService {
 
   async create(createQuizDto: CreateQuizDto) {
     try {
-      return await this.prisma.quiz.create({
+      const quiz = await this.prisma.quiz.create({
         data: {
           title: createQuizDto.title,
           questions: {
@@ -37,6 +37,8 @@ export class QuizzesService {
           },
         },
       });
+      await this.cacheManager.del('/quizzes');
+      return quiz;
     } catch (error) {
       this.logger.error('Failed to create quiz', error);
       throw new InternalServerErrorException('Failed to create quiz');
@@ -44,14 +46,15 @@ export class QuizzesService {
   }
 
   async findAll() {
-    const cachedQuizzes = await this.cacheManager.get<Quiz[]>('/quizzes');
-    if (cachedQuizzes) return cachedQuizzes;
-
+    const cacheKey = '/quizzes';
     try {
+      const cachedQuizzes = await this.cacheManager.get<Quiz[]>(cacheKey);
+      if (cachedQuizzes) return cachedQuizzes;
+
       const quizzes = await this.prisma.quiz.findMany({
         include: { _count: { select: { questions: true } } },
       });
-      await this.cacheManager.set('/quizzes', quizzes);
+      await this.cacheManager.set(cacheKey, quizzes, 600000); // 10 minutes in ms
       return quizzes;
     } catch (error) {
       this.logger.error('Failed to fetch quizzes', error);
@@ -60,32 +63,39 @@ export class QuizzesService {
   }
 
   async findOne(id: string) {
-    const cachedQuiz = await this.cacheManager.get<Quiz>(`/quizzes/${id}`);
-    if (cachedQuiz) return cachedQuiz;
-
+    const cacheKey = `/quizzes/${id}`;
     try {
+      const cachedQuiz = await this.cacheManager.get<
+        Quiz & { questions: Question[] }
+      >(cacheKey);
+      if (cachedQuiz) return cachedQuiz;
+
       const quiz = await this.prisma.quiz.findUnique({
         where: { id },
         include: { questions: true },
       });
-      if (!quiz) throw new NotFoundException('Quiz not found');
-      await this.cacheManager.set(`/quizzes/${id}`, quiz);
+      if (!quiz) throw new NotFoundException(`Quiz with ID ${id} not found`);
+
+      await this.cacheManager.set(cacheKey, quiz, 600000);
       return quiz;
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       this.logger.error(`Failed to fetch quiz ${id}`, error);
-      throw new InternalServerErrorException('Failed to fetch quiz');
+      throw new InternalServerErrorException(`Failed to fetch quiz ${id}`);
     }
   }
 
   async remove(id: string) {
     try {
       await this.prisma.quiz.delete({ where: { id } });
-      await this.cacheManager.del('/quizzes');
-      await this.cacheManager.del(`/quizzes/${id}`);
+      // Invalidate both lists and single item caches
+      await Promise.all([
+        this.cacheManager.del('/quizzes'),
+        this.cacheManager.del(`/quizzes/${id}`),
+      ]);
     } catch (error) {
       this.logger.error(`Failed to delete quiz ${id}`, error);
-      throw new InternalServerErrorException('Failed to delete quiz');
+      throw new InternalServerErrorException(`Failed to delete quiz ${id}`);
     }
   }
 }
