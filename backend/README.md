@@ -28,10 +28,10 @@
 ## Project setup
 
 ```bash
-$ npm install
+npm install
 ```
 
-## Compile and run the project
+## Running the application
 
 ```bash
 # development
@@ -44,18 +44,30 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
-## Run tests
+## Quality Assurance
 
 ```bash
-# unit tests
+# Linting
+$ npm run lint
+
+# Type checking
+$ npm run typecheck
+
+# Unit tests
 $ npm run test
 
-# e2e tests
+# E2E tests
 $ npm run test:e2e
 
-# test coverage
+# Test coverage
 $ npm run test:cov
 ```
+
+## Observability & Maintenance
+
+- **Structured Logging:** Implemented using `nestjs-pino`.
+- **Health Checks:** Accessible via `/health` endpoint (uses `@nestjs/terminus`).
+- **Database Migrations:** Use `npm run migration:deploy` for automated production migrations.
 
 ## Deployment
 
