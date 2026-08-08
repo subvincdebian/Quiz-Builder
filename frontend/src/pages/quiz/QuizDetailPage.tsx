@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { quizApi } from '@/entities/quiz/api';
 import type { Quiz } from '@/entities/quiz/types';
 import { Card } from '@/shared/ui/Card';
@@ -9,6 +10,7 @@ import { ArrowLeft, Edit2, CheckCircle2, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export const QuizDetailPage: React.FC = () => {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [quiz, setQuiz] = useState<Quiz | null>(null);
@@ -20,12 +22,12 @@ export const QuizDetailPage: React.FC = () => {
         .getById(id)
         .then((res) => setQuiz(res.data))
         .catch(() => {
-          toast.error('Failed to load quiz');
+          toast.error(t('Failed to load quiz'));
           navigate('/quizzes');
         })
         .finally(() => setLoading(false));
     }
-  }, [id, navigate]);
+  }, [id, navigate, t]);
 
   if (loading)
     return (
@@ -40,13 +42,13 @@ export const QuizDetailPage: React.FC = () => {
     <article className="max-w-4xl mx-auto space-y-8">
       <header className="flex items-center justify-between">
         <Button variant="ghost" onClick={() => navigate('/quizzes')}>
-          <ArrowLeft className="w-4 h-4" /> Back to list
+          <ArrowLeft className="w-4 h-4" /> {t('Back to list')}
         </Button>
         <Button
           variant="primary"
           onClick={() => navigate(`/quizzes/${id}/edit`)}
         >
-          <Edit2 className="w-4 h-4" /> Edit Quiz
+          <Edit2 className="w-4 h-4" /> {t('Edit Quiz')}
         </Button>
       </header>
 
@@ -56,11 +58,13 @@ export const QuizDetailPage: React.FC = () => {
             {quiz.title}
           </h1>
           <p className="text-zinc-500 mt-2">
-            Created on {new Date(quiz.createdAt).toLocaleDateString()}
+            {t('Created on', {
+              date: new Date(quiz.createdAt).toLocaleDateString(),
+            })}
           </p>
         </div>
 
-        <section className="space-y-8" aria-label="Questions">
+        <section className="space-y-8" aria-label={t('Questions')}>
           {quiz.questions.map((q, i) => (
             <div
               key={q.id}

@@ -4,9 +4,15 @@ import {
   useFieldArray,
   useWatch,
   type SubmitHandler,
+  type Control,
+  type FieldArrayWithId,
+  type UseFormRegister,
+  type FieldErrors,
+  type UseFormSetValue,
 } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { quizSchema, type QuizFormData } from './schema';
+import type { QuestionFormData } from './schema';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
 import { RadioGroup } from '@/shared/ui/RadioGroup';
@@ -14,8 +20,10 @@ import { quizApi } from '@/entities/quiz/api';
 import { Plus, Trash2, Copy, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 export const QuizForm: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEditMode = !!id;
@@ -70,34 +78,26 @@ export const QuizForm: React.FC = () => {
 
   const onSubmit: SubmitHandler<QuizFormData> = async (data) => {
     try {
-      const payload = {
-        ...data,
-        questions: data.questions.map((q) => ({
-          ...q,
-          options: q.options || [],
-          correctAnswers:
-            q.type === 'INPUT'
-              ? [q.options[0]?.text || '']
-              : q.options.filter((o) => o.isCorrect).map((o) => o.text),
-        })),
-      };
-
       if (isEditMode && id) {
-        await quizApi.update(id, payload as any);
-        toast.success('Quiz updated successfully!');
+        await quizApi.update(id, data);
+        toast.success(t('Quiz updated successfully!'));
       } else {
-        await quizApi.create(payload as any);
-        toast.success('Quiz created successfully!');
+        await quizApi.create(data);
+        toast.success(t('Quiz created successfully!'));
       }
       navigate('/quizzes');
     } catch {
-      toast.error(`Failed to ${isEditMode ? 'update' : 'create'} quiz`);
+      toast.error(
+        t(isEditMode ? 'Failed to update quiz' : 'Failed to create quiz')
+      );
     }
   };
 
   if (loading)
     return (
-      <div className="p-8 text-center text-zinc-400">Loading quiz data...</div>
+      <div className="p-8 text-center text-zinc-400">
+        {t('Loading quiz data...')}
+      </div>
     );
 
   return (
@@ -107,14 +107,14 @@ export const QuizForm: React.FC = () => {
     >
       <div className="space-y-2">
         <h2 className="text-2xl font-bold tracking-tight text-zinc-100">
-          {isEditMode ? 'Edit Quiz' : 'Create New Quiz'}
+          {isEditMode ? t('Edit Quiz') : t('Create New Quiz')}
         </h2>
       </div>
 
       <Input
         {...register('title')}
-        label="Quiz Title *"
-        placeholder="e.g., React Fundamentals"
+        label={t('Quiz Title *')}
+        placeholder={t('e.g., React Fundamentals')}
         error={errors.title?.message}
       />
 
@@ -130,13 +130,14 @@ export const QuizForm: React.FC = () => {
             errors={errors}
             insert={insert}
             setValue={setValue}
+            t={t}
           />
         ))}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-zinc-800">
         <Button type="button" variant="ghost" onClick={() => navigate(-1)}>
-          <ArrowLeft className="w-4 h-4" /> Back
+          <ArrowLeft className="w-4 h-4" /> {t('Back')}
         </Button>
         <Button
           type="button"
@@ -153,21 +154,33 @@ export const QuizForm: React.FC = () => {
             })
           }
         >
-          <Plus className="w-4 h-4" /> Add Question
+          <Plus className="w-4 h-4" /> {t('Add Question')}
         </Button>
         <Button
           type="submit"
           className="w-full sm:w-auto ml-auto"
           isLoading={isSubmitting}
         >
-          {isEditMode ? 'Save Changes' : 'Create Quiz'}
+          {isEditMode ? t('Save Changes') : t('Create Quiz')}
         </Button>
       </div>
     </form>
   );
 };
 
-const QuestionFields: React.FC<any> = ({
+interface QuestionFieldsProps {
+  control: Control<QuizFormData>;
+  qIndex: number;
+  remove: (index: number) => void;
+  fields: FieldArrayWithId<QuizFormData, 'questions'>[];
+  register: UseFormRegister<QuizFormData>;
+  errors: FieldErrors<QuizFormData>;
+  insert: (index: number, value: QuestionFormData) => void;
+  setValue: UseFormSetValue<QuizFormData>;
+  t: (key: string, options?: { number: number }) => string;
+}
+
+const QuestionFields: React.FC<QuestionFieldsProps> = ({
   control,
   qIndex,
   remove,
@@ -176,6 +189,7 @@ const QuestionFields: React.FC<any> = ({
   errors,
   insert,
   setValue,
+  t,
 }) => {
   const type = useWatch({ control, name: `questions.${qIndex}.type` });
   const {
@@ -186,7 +200,9 @@ const QuestionFields: React.FC<any> = ({
 
   const copyQuestion = () => {
     const values = { ...fields[qIndex] };
-    insert(qIndex + 1, values);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id, ...questionData } = values;
+    insert(qIndex + 1, questionData as QuestionFormData);
   };
 
   // Helper to handle type changes
@@ -233,21 +249,26 @@ const QuestionFields: React.FC<any> = ({
           <div className="flex-1">
             <Input
               {...register(`questions.${qIndex}.text`)}
-              label={`Question ${qIndex + 1} *`}
-              placeholder="Enter your question here..."
+              label={t('Question {{number}} *', { number: qIndex + 1 })}
+              placeholder={t('Enter your question here...')}
               error={errors.questions?.[qIndex]?.text?.message}
             />
           </div>
           <div className="md:w-auto">
             <RadioGroup
-              label="Type"
+              label={t('Type')}
               value={type}
-              onChange={(val) => setValue(`questions.${qIndex}.type`, val)}
+              onChange={(val) =>
+                setValue(
+                  `questions.${qIndex}.type`,
+                  val as 'BOOLEAN' | 'INPUT' | 'CHECKBOX' | 'MULTIPLE_CHOICE'
+                )
+              }
               options={[
-                { label: 'Boolean', value: 'BOOLEAN' },
-                { label: 'Input', value: 'INPUT' },
-                { label: 'Checkbox', value: 'CHECKBOX' },
-                { label: 'Multiple Choice', value: 'MULTIPLE_CHOICE' },
+                { label: t('Boolean'), value: 'BOOLEAN' },
+                { label: t('Input'), value: 'INPUT' },
+                { label: t('Checkbox'), value: 'CHECKBOX' },
+                { label: t('Multiple Choice'), value: 'MULTIPLE_CHOICE' },
               ]}
             />
           </div>
@@ -259,7 +280,7 @@ const QuestionFields: React.FC<any> = ({
             variant="ghost"
             className="px-3"
             onClick={copyQuestion}
-            title="Duplicate question"
+            title={t('Duplicate question')}
           >
             <Copy className="w-4 h-4" />
           </Button>
@@ -269,7 +290,7 @@ const QuestionFields: React.FC<any> = ({
             disabled={fields.length === 1}
             className="px-3"
             onClick={() => remove(qIndex)}
-            title="Delete question"
+            title={t('Delete question')}
           >
             <Trash2 className="w-4 h-4" />
           </Button>
@@ -279,11 +300,13 @@ const QuestionFields: React.FC<any> = ({
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <label className="text-sm font-medium text-zinc-400">
-            {type === 'INPUT' ? 'Correct Answer *' : 'Options *'}
+            {type === 'INPUT' ? t('Correct Answer *') : t('Options *')}
           </label>
           {type !== 'INPUT' && (
             <span className="text-xs text-zinc-500">
-              {type === 'CHECKBOX' ? 'Select all that apply' : 'Select one'}
+              {type === 'CHECKBOX'
+                ? t('Select all that apply')
+                : t('Select one')}
             </span>
           )}
         </div>
@@ -292,7 +315,9 @@ const QuestionFields: React.FC<any> = ({
             <Input
               {...register(`questions.${qIndex}.options.${oIndex}.text`)}
               placeholder={
-                type === 'INPUT' ? 'Correct answer' : `Option ${oIndex + 1}`
+                type === 'INPUT'
+                  ? t('Correct answer')
+                  : t('Option {{number}}', { number: oIndex + 1 })
               }
               error={
                 errors.questions?.[qIndex]?.options?.[oIndex]?.text?.message
@@ -302,7 +327,7 @@ const QuestionFields: React.FC<any> = ({
             {type !== 'INPUT' && (
               <label
                 className="flex items-center gap-2 cursor-pointer mt-7"
-                title="Mark as correct"
+                title={t('Mark as correct')}
               >
                 <input
                   type="checkbox"
@@ -315,7 +340,7 @@ const QuestionFields: React.FC<any> = ({
                   )}
                   className="accent-indigo-500 w-5 h-5 flex-shrink-0"
                 />
-                <span className="text-xs text-zinc-500">Correct</span>
+                <span className="text-xs text-zinc-500">{t('Correct')}</span>
               </label>
             )}
 
@@ -326,7 +351,7 @@ const QuestionFields: React.FC<any> = ({
                 className="px-3 mt-7"
                 disabled={optFields.length <= 2}
                 onClick={() => removeOption(oIndex)}
-                title="Remove option"
+                title={t('Remove option')}
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
@@ -340,7 +365,7 @@ const QuestionFields: React.FC<any> = ({
             className="text-xs w-full sm:w-auto mt-2"
             onClick={() => appendOption({ text: '', isCorrect: false })}
           >
-            <Plus className="w-3 h-3" /> Add Option
+            <Plus className="w-3 h-3" /> {t('Add Option')}
           </Button>
         )}
       </div>

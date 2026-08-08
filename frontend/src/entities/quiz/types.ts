@@ -1,6 +1,6 @@
 export interface Question {
   id: string;
-  type: 'BOOLEAN' | 'INPUT' | 'CHECKBOX';
+  type: 'BOOLEAN' | 'INPUT' | 'CHECKBOX' | 'MULTIPLE_CHOICE';
   text: string;
   options: string[];
   correctAnswers: string[];

@@ -28,3 +28,4 @@ export const quizSchema = z.object({
 });
 
 export type QuizFormData = z.infer<typeof quizSchema>;
+export type QuestionFormData = z.infer<typeof questionSchema>;

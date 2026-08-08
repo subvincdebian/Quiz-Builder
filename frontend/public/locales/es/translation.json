@@ -1,0 +1,22 @@
+{
+  "QuizBuilder": "QuizBuilder",
+  "Quizzes": "Cuestionarios",
+  "Create": "Crear",
+  "Available Quizzes": "Cuestionarios disponibles",
+  "Search quizzes...": "Buscar cuestionarios...",
+  "Failed to load quizzes. Please try again.": "Error al cargar los cuestionarios. Por favor, inténtelo de nuevo.",
+  "Try again": "Intentar de nuevo",
+  "No results found": "No se encontraron resultados",
+  "Try adjusting your search query.": "Intente ajustar su consulta de búsqueda.",
+  "Clear search": "Limpiar búsqueda",
+  "No quizzes yet": "No hay cuestionarios todavía",
+  "Create your first quiz to get started.": "Cree su primer cuestionario para empezar.",
+  "Create first quiz": "Crear primer cuestionario",
+  "Delete Quiz": "Eliminar cuestionario",
+  "Are you sure you want to delete \"{{title}}\"? This action cannot be undone.": "¿Está seguro de que desea eliminar \"{{title}}\"? Esta acción no se puede deshacer.",
+  "questions": "{{count}} pregunta",
+  "questions_plural": "{{count}} preguntas",
+  "View": "Ver",
+  "Edit": "Editar",
+  "Delete": "Eliminar"
+}

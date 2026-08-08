@@ -1,6 +1,24 @@
 import { http, HttpResponse } from 'msw';
 
-const quizzes = [
+interface QuizQuestion {
+  id: string;
+  type: 'BOOLEAN' | 'INPUT' | 'CHECKBOX' | 'MULTIPLE_CHOICE';
+  text: string;
+  options: string[];
+  correctAnswers: string[];
+}
+
+interface Quiz {
+  id: string;
+  title: string;
+  createdAt: string;
+  questions: QuizQuestion[];
+  _count?: {
+    questions: number;
+  };
+}
+
+const quizzes: Quiz[] = [
   {
     id: '1',
     title: 'Test Quiz',
@@ -19,5 +37,13 @@ export const handlers = [
     return quiz
       ? HttpResponse.json(quiz)
       : new HttpResponse(null, { status: 404 });
+  }),
+  http.post('http://localhost:3000/quizzes', async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json({ id: 'new-id', ...body }, { status: 201 });
+  }),
+  http.put('http://localhost:3000/quizzes/:id', async ({ request, params }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json({ id: params.id, ...body }, { status: 200 });
   }),
 ];

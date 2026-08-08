@@ -6,6 +6,7 @@ import {
   AlertCircle,
   Search,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { quizApi } from '../../entities/quiz/api';
 import type { Quiz } from '../../entities/quiz/types';
 import { QuizListGrid } from '../../widgets/quiz/QuizListGrid';
@@ -17,6 +18,7 @@ import { useDebounce } from '../../shared/hooks/useDebounce';
 import toast from 'react-hot-toast';
 
 export const QuizListPage: React.FC = () => {
+  const { t } = useTranslation();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -33,8 +35,8 @@ export const QuizListPage: React.FC = () => {
       .then((res) => setQuizzes(res.data))
       .catch((err) => {
         console.error(err);
-        setError('Failed to load quizzes. Please try again.');
-        toast.error('Failed to load quizzes');
+        setError(t('Failed to load quizzes. Please try again.'));
+        toast.error(t('Failed to load quizzes. Please try again.'));
       })
       .finally(() => setLoading(false));
   };
@@ -52,10 +54,15 @@ export const QuizListPage: React.FC = () => {
     try {
       await quizApi.delete(quizToDelete.id);
       setQuizzes(quizzes.filter((q) => q.id !== quizToDelete.id));
-      toast.success('Quiz deleted successfully');
+      toast.success(
+        t(
+          'Are you sure you want to delete "{{title}}"? This action cannot be undone.',
+          { title: quizToDelete.title }
+        )
+      );
       setQuizToDelete(null);
     } catch {
-      toast.error('Failed to delete quiz');
+      toast.error(t('Delete', { defaultValue: 'Failed to delete quiz' }));
     }
   };
 
@@ -63,14 +70,14 @@ export const QuizListPage: React.FC = () => {
     <div className="space-y-8">
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight text-zinc-100">
-          Available Quizzes
+          {t('Available Quizzes')}
         </h1>
         <Input
-          placeholder="Search quizzes..."
+          placeholder={t('Search quizzes...')}
           className="w-full sm:w-64"
           onChange={(e) => setSearch(e.target.value)}
           value={search}
-          aria-label="Search quizzes"
+          aria-label={t('Search quizzes...')}
         />
       </header>
 
@@ -91,7 +98,7 @@ export const QuizListPage: React.FC = () => {
           <AlertCircle className="h-12 w-12 text-rose-500" />
           <p className="text-zinc-100">{error}</p>
           <Button variant="ghost" onClick={fetchQuizzes}>
-            <RefreshCw className="mr-2 h-4 w-4" /> Try again
+            <RefreshCw className="mr-2 h-4 w-4" /> {t('Try again')}
           </Button>
         </section>
       ) : filteredQuizzes.length === 0 ? (
@@ -100,22 +107,24 @@ export const QuizListPage: React.FC = () => {
             <>
               <Search className="h-12 w-12 text-zinc-600" />
               <h2 className="text-xl font-medium text-zinc-100">
-                No results found
+                {t('No results found')}
               </h2>
-              <p className="text-zinc-400">Try adjusting your search query.</p>
-              <Button onClick={() => setSearch('')}>Clear search</Button>
+              <p className="text-zinc-400">
+                {t('Try adjusting your search query.')}
+              </p>
+              <Button onClick={() => setSearch('')}>{t('Clear search')}</Button>
             </>
           ) : (
             <>
               <FileQuestion className="h-12 w-12 text-zinc-600" />
               <h2 className="text-xl font-medium text-zinc-100">
-                No quizzes yet
+                {t('No quizzes yet')}
               </h2>
               <p className="text-zinc-400">
-                Create your first quiz to get started.
+                {t('Create your first quiz to get started.')}
               </p>
               <Button onClick={() => (window.location.href = '/create')}>
-                <Plus className="mr-2 h-4 w-4" /> Create first quiz
+                <Plus className="mr-2 h-4 w-4" /> {t('Create first quiz')}
               </Button>
             </>
           )}
@@ -132,11 +141,13 @@ export const QuizListPage: React.FC = () => {
       <Modal
         isOpen={!!quizToDelete}
         onClose={() => setQuizToDelete(null)}
-        title="Delete Quiz"
+        title={t('Delete Quiz')}
         onConfirm={handleDelete}
       >
-        Are you sure you want to delete "{quizToDelete?.title}"? This action
-        cannot be undone.
+        {t(
+          'Are you sure you want to delete "{{title}}"? This action cannot be undone.',
+          { title: quizToDelete?.title }
+        )}
       </Modal>
     </div>
   );
