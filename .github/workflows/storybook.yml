@@ -62,7 +62,7 @@ jobs:
 
       - name: Build Storybook
         working-directory: frontend
-        run: npm run build:storybook
+         run: npm run build-storybook
 
       - name: Upload Storybook artifact
         uses: actions/upload-artifact@v4
