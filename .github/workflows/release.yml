@@ -28,7 +28,7 @@ jobs:
           cache: 'npm'
 
       - name: Install root deps
-        run: npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
+        run: npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 --ignore-scripts
 
       - name: Run Semantic Release
         id: release

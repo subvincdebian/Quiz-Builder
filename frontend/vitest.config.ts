@@ -8,6 +8,8 @@ import { playwright } from '@vitest/browser-playwright';
 const dirname =
   typeof __dirname !== 'undefined' ? __dirname : import.meta.dirname;
 
+const isStorybook = process.env.STORYBOOK_TEST === 'true';
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -28,22 +30,26 @@ export default defineConfig({
           include: ['src/**/*.{test,spec}.{ts,tsx}'],
         },
       },
-      {
-        name: 'storybook',
-        plugins: [
-          storybookTest({
-            configDir: path.join(dirname, '.storybook'),
-          }),
-        ],
-        test: {
-          browser: {
-            enabled: true,
-            headless: true,
-            provider: playwright({}),
-            instances: [{ browser: 'chromium' }],
-          },
-        },
-      },
+      ...(isStorybook
+        ? [
+            {
+              name: 'storybook',
+              plugins: [
+                storybookTest({
+                  configDir: path.join(dirname, '.storybook'),
+                }),
+              ],
+              test: {
+                browser: {
+                  enabled: true,
+                  headless: true,
+                  provider: playwright({}),
+                  instances: [{ browser: 'chromium' }],
+                },
+              },
+            },
+          ]
+        : []),
     ],
   },
 });
