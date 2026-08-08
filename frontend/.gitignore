@@ -27,3 +27,6 @@ dist-ssr
 storybook-static
 
 playwright-report/
+
+bundle-analysis.html
+dist/bundle-analysis.html
