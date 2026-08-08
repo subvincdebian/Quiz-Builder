@@ -1,5 +1,6 @@
 {
   "name": "quiz-builder",
+  "version": "1.1.0",
   "private": true,
   "license": "MIT",
   "workspaces": [
@@ -18,13 +19,28 @@
     "test:e2e": "npm run test:e2e -w backend",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "typecheck": "npm run typecheck -w backend && npm run typecheck -w frontend",
+    "release": "standard-version",
     "prepare": "husky install"
   },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  },
   "devDependencies": {
+    "@commitlint/cli": "^21.2.1",
+    "@commitlint/config-conventional": "^21.2.0",
     "concurrently": "^10.0.4",
     "eslint": "^8.0.0",
+    "eslint-plugin-boundaries": "^7.1.0",
     "husky": "^8.0.0",
-    "prettier": "^3.0.0"
+    "lint-staged": "^17.3.0",
+    "prettier": "^3.0.0",
+    "standard-version": "^9.5.0"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",
