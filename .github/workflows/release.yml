@@ -33,14 +33,13 @@ jobs:
       - name: Install root deps
         run: npm ci --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 --ignore-scripts
 
+      - name: Install semantic-release plugins
+        run: npm install -D @semantic-release/changelog @semantic-release/git @conventional-changelog/conventionalcommits --no-audit
+
       - name: Run Semantic Release
         id: release
         uses: cycjimmy/semantic-release-action@v4
         with:
           semantic_version: 24
-          extra_plugins: |
-            @semantic-release/changelog
-            @semantic-release/git
-            @conventional-changelog/conventionalcommits
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

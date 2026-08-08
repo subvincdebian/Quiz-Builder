@@ -4,6 +4,9 @@ import { afterEach, beforeAll, afterAll, vi, expect } from 'vitest';
 import { server } from './server';
 import { configureAxe } from 'vitest-axe';
 import * as matchers from 'vitest-axe/matchers';
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+import en from '../../public/locales/en/translation.json';
 
 // Extend Vitest expect with axe matchers
 expect.extend(matchers);
@@ -16,7 +19,16 @@ configureAxe({
   },
 });
 
-beforeAll(() => server.listen());
+beforeAll(async () => {
+  await i18n.use(initReactI18next).init({
+    lng: 'en',
+    fallbackLng: 'en',
+    defaultNS: 'translation',
+    resources: { en: { translation: en } },
+    interpolation: { escapeValue: false },
+  });
+  server.listen();
+});
 afterEach(() => {
   cleanup();
   server.resetHandlers();
