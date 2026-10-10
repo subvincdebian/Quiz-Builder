@@ -60,7 +60,7 @@
     "autoprefixer": "^10.5.4",
     "eslint-plugin-storybook": "^10.5.7",
     "jsdom": "^30.0.1",
-    "msw": "^2.15.0",
+    "msw": "^3.0.2",
     "oxlint": "^1.75.0",
     "playwright": "latest",
     "postcss": "^8.5.26",
